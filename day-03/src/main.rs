@@ -30,7 +30,7 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Number {
     value: usize,
     x_start: usize,
@@ -118,7 +118,49 @@ fn part_1(infile: &str) -> Result<usize> {
     // I'm so mad that I'm not even gonna delete the code
 }
 fn part_2(infile: &str) -> Result<usize> {
-    todo!()
+    let mut gears: HashSet<(usize, usize)> = HashSet::new();
+    let mut numbers: HashMap<(usize, usize), Number> = HashMap::new();
+    let parser = Regex::new(r"([0123456789]+|[^0123456789.])")?;
+
+    for (y, line) in infile.lines().enumerate() {
+        let matches = parser.find_iter(line);
+        for m in matches {
+            if let Ok(x) = m.as_str().parse::<usize>() {
+                let num = Number {
+                    value: x,
+                    x_start: m.start(),
+                    x_end: m.end(),
+                    y,
+                };
+                for k in m.start()..m.end() {
+                    numbers.insert((k, y), num);
+                }
+            } else if m.as_str() == "*" {
+                gears.insert((m.start(), y));
+            }
+        }
+    }
+
+    let numbers = numbers;
+    let gears = gears;
+
+    let mut total = 0;
+    for g in gears {
+        let mut adj = HashSet::new();
+        for x in g.0.saturating_sub(1)..=(g.0 + 1) {
+            for y in g.1.saturating_sub(1)..=(g.1 + 1) {
+                if let Some(n) = numbers.get(&(x, y)) {
+                    adj.insert(n);
+                }
+            }
+        }
+        if adj.len() == 2 {
+            // println!("gear: {g:?} with ratios {adj:?}");
+            total += adj.iter().map(|n| n.value).product::<usize>();
+        }
+    }
+
+    Ok(total)
 }
 
 // numbers: have a line number (y coordinate) and a range (x coordinates)
@@ -161,7 +203,7 @@ mod test {
 
     #[test]
     fn part_1_dupes() {
-        assert_eq!(part_1(DUPES_1).unwrap(), 4361 - (633));
+        assert_eq!(part_1(DUPES_1).unwrap(), 4361 - (633 - 467));
     }
 
     const EOL_1: &str = r"467..114..
@@ -178,5 +220,10 @@ mod test {
     #[test]
     fn part_1_eol() {
         assert_eq!(part_1(EOL_1).unwrap(), 4361 + (6333 - 633));
+    }
+
+    #[test]
+    fn part_2_example() {
+        assert_eq!(part_2(EXAMPLE_1).unwrap(), 467835);
     }
 }
