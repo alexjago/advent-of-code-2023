@@ -1,12 +1,12 @@
-use std::fs::read_to_string;
+use std::{collections::HashSet, fs::read_to_string};
 
-use anyhow::{Context, Result};
+use anyhow::{Result};
 use clap::Parser;
 use counter::Counter;
-use itertools;
-use nom;
-use regex;
-use strum;
+
+
+
+
 
 #[derive(Parser)]
 pub struct Opts {
@@ -24,35 +24,28 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct Hand(String);
+pub trait Hand {
+    fn score(&self) -> usize;
+}
 
-impl Ord for Hand {
-    /// 5 of a kind beats 4x beats 3x beats 2x beats 1x
-    /// Ace > King > Queen ...
+impl std::cmp::Ord for dyn Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        use std::cmp::Ordering::*;
-        let this = &self.0.chars().collect::<Counter<_>>().most_common_ordered();
-        let that = other
-            .0
-            .chars()
-            .collect::<Counter<_>>()
-            .most_common_ordered();
-
-        match this[0].1.cmp(&that[0].1) {
-            Less => Less,
-            Greater => Greater,
-            // Equal => Hand::high_card(&self.0, &other.0),
-            Equal => match this[1].1.cmp(&that[1].1) {
-                // Distinguish between Full House and Three of a Kind, and Two Pair and One Pair
-                Less => Less,
-                Greater => Greater,
-                Equal => Hand::as_number(&self.0).cmp(&Hand::as_number(&other.0)),
-            },
-        }
+        self.score().cmp(&other.score())
     }
 }
 
+impl PartialOrd for dyn Hand {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Eq for dyn Hand {}
+
+impl PartialEq for dyn Hand {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum HandType {
     HighCard = 1,
@@ -64,9 +57,9 @@ pub enum HandType {
     FiveOfAKind = 7,
 }
 
-impl From<Hand> for HandType {
-    fn from(hand: Hand) -> HandType {
-        let tops = hand.0.chars().collect::<Counter<_>>().most_common_ordered();
+impl HandType {
+    fn from_cards(cards: &str) -> HandType {
+        let tops = cards.chars().collect::<Counter<_>>().most_common_ordered();
         match tops[0].1 {
             2 => match tops[1].1 {
                 2 => Self::TwoPair,
@@ -83,92 +76,56 @@ impl From<Hand> for HandType {
     }
 }
 
-impl Hand {
-    /// Two up to Ace
-    pub const STRENGTHS: &str = "23456789TJQKA";
-    /// Joker up to Ace
-    pub const STRENGTHS_2: &str = "J23456789TQKA";
-    /// Compares hands left to right to establish which has the higher card
-    fn high_card(this: &str, that: &str) -> std::cmp::Ordering {
-        use std::cmp::Ordering;
-        if this.is_empty() && !that.is_empty() {
-            Ordering::Less
-        } else if that.is_empty() && !this.is_empty() {
-            Ordering::Greater
-        } else if this.is_empty() && that.is_empty() {
-            Ordering::Equal
-        } else {
-            match Hand::STRENGTHS
-                .find(this.chars().next().unwrap())
-                .cmp(&Hand::STRENGTHS.find(that.chars().next().unwrap()))
-            {
-                Ordering::Less => Ordering::Less,
-                Ordering::Greater => Ordering::Greater,
-                Ordering::Equal => Hand::high_card(&this[1..], &that[1..]),
-            }
-        }
-    }
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct PartOne(String);
 
-    /// Suppose that J is now a Joker
-    /// Generate a score consistent with the rules:
-    /// For each *other* card in the hand, try replacing the jokers with that card
-    /// Then take as_number
-    /// And multiply that number by 10^(hand type)
-    fn joker_max(&self) -> usize {
-        use std::collections::HashSet;
-        let cards: HashSet<String> = self
-            .0
-            .chars()
-            // .filter(|&s| s != 'J')
-            .map(|c| c.to_string())
-            .collect();
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct PartTwo(String);
 
-        cards
-            .iter()
-            .map(|c| Hand(self.0.replace('J', c)))
-            .map(HandType::from)
-            .map(|t| (t as usize) * 1_000_000_000_000 + Hand::as_number_2(&self.0))
-            .max()
-            .unwrap_or(0)
-    }
+impl PartOne {
+    const STRENGTH: &str = "23456789TJQKA";
+}
 
-    fn as_number(this: &str) -> usize {
-        if this.is_empty() {
-            return 0;
-        }
-        let mut out: usize = 0;
-        for s in this.chars() {
+impl PartTwo {
+    const STRENGTH: &str = "J23456789TQKA";
+}
+
+impl Hand for PartOne {
+    fn score(&self) -> usize {
+        let mut out = HandType::from_cards(&self.0) as usize;
+        for c in self.0.chars() {
             out *= 100;
-            out += Hand::STRENGTHS.find(s).expect("illegal card");
-        }
-        out
-    }
-    fn as_number_2(this: &str) -> usize {
-        if this.is_empty() {
-            return 0;
-        }
-        let mut out: usize = 0;
-        for s in this.chars() {
-            out *= 100;
-            out += (Hand::STRENGTHS_2.find(s).expect("illegal card") + 1);
+            out += Self::STRENGTH.find(c).expect("Illegal card");
         }
         out
     }
 }
+impl Hand for PartTwo {
+    fn score(&self) -> usize {
+        let avail: HashSet<String> = self.0.chars().map(|c| c.to_string()).collect();
 
-impl PartialOrd for Hand {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+        let mut out = avail
+            .iter()
+            .map(|c| self.0.replace('J', c))
+            .map(|s| HandType::from_cards(&s) as usize)
+            .max()
+            .unwrap_or_default();
+        for c in self.0.chars() {
+            out *= 100;
+            out += Self::STRENGTH.find(c).expect("Illegal card");
+        }
+        out
     }
 }
 
 /// As is tradition, the sample passes but
 /// 249407921 is wrong
 fn part_1(infile: &str) -> Result<usize> {
-    let mut input: Vec<(Hand, usize)> = infile
+    let mut input: Vec<(usize, PartOne, usize)> = infile
         .lines()
         .filter_map(|s| s.split_once(' '))
-        .map(|(h, b)| (Hand(h.to_string()), b.parse().unwrap()))
+        .map(|(h, b)| (PartOne(h.to_string()), b.parse().unwrap()))
+        .map(|(h, b)| (h.score(), h, b))
         .collect();
 
     input.sort_unstable();
@@ -176,11 +133,11 @@ fn part_1(infile: &str) -> Result<usize> {
     let maybe: usize = input
         .iter()
         .enumerate()
-        .map(|(i, x)| {
-            println!("{}\t{}\t{}", i + 1, x.0 .0, x.1);
-            (i, x)
-        })
-        .map(|(i, (_, b))| (i + 1) * b)
+        // .map(|(i, x)| {
+        //     println!("{}\t{}\t{}\t{}", i + 1, x.0, x.1 .0, x.2);
+        //     (i, x)
+        // })
+        .map(|(i, (_, _, b))| (i + 1) * b)
         .sum();
 
     // 249407921 is too low btw
@@ -191,11 +148,11 @@ fn part_1(infile: &str) -> Result<usize> {
     Ok(maybe)
 }
 fn part_2(infile: &str) -> Result<usize> {
-    let mut input: Vec<(usize, Hand, usize)> = infile
+    let mut input: Vec<(usize, PartTwo, usize)> = infile
         .lines()
         .filter_map(|s| s.split_once(' '))
-        .map(|(h, b)| (Hand(h.to_string()), b.parse().unwrap()))
-        .map(|(h, b)| (h.clone().joker_max(), h, b))
+        .map(|(h, b)| (PartTwo(h.to_string()), b.parse().unwrap()))
+        .map(|(h, b)| (h.score(), h, b))
         .collect();
 
     input.sort_unstable();
@@ -203,10 +160,10 @@ fn part_2(infile: &str) -> Result<usize> {
     let maybe: usize = input
         .iter()
         .enumerate()
-        .map(|(i, x)| {
-            println!("{}\t{}\t{}\t{}", i + 1, x.0, x.1 .0, x.2);
-            (i, x)
-        })
+        // .map(|(i, x)| {
+        //     println!("{}\t{}\t{}\t{}", i + 1, x.0, x.1 .0, x.2);
+        //     (i, x)
+        // })
         .map(|(i, (_, _, b))| (i + 1) * b)
         .sum();
 
