@@ -24,7 +24,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Hand(String);
 
 impl Ord for Hand {
@@ -53,9 +53,41 @@ impl Ord for Hand {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub enum HandType {
+    HighCard = 1,
+    OnePair = 2,
+    TwoPair = 3,
+    ThreeOfAKind = 4,
+    FullHouse = 5,
+    FourOfAKind = 6,
+    FiveOfAKind = 7,
+}
+
+impl From<Hand> for HandType {
+    fn from(hand: Hand) -> HandType {
+        let tops = hand.0.chars().collect::<Counter<_>>().most_common_ordered();
+        match tops[0].1 {
+            2 => match tops[1].1 {
+                2 => Self::TwoPair,
+                _ => Self::OnePair,
+            },
+            3 => match tops[1].1 {
+                2 => Self::FullHouse,
+                _ => Self::ThreeOfAKind,
+            },
+            4 => Self::FourOfAKind,
+            5 => Self::FiveOfAKind,
+            _ => Self::HighCard,
+        }
+    }
+}
+
 impl Hand {
     /// Two up to Ace
     pub const STRENGTHS: &str = "23456789TJQKA";
+    /// Joker up to Ace
+    pub const STRENGTHS_2: &str = "J23456789TQKA";
     /// Compares hands left to right to establish which has the higher card
     fn high_card(this: &str, that: &str) -> std::cmp::Ordering {
         use std::cmp::Ordering;
@@ -77,7 +109,29 @@ impl Hand {
         }
     }
 
-    // print as a base-14 number (so that 2 through 10 can be 2 through 10)
+    /// Suppose that J is now a Joker
+    /// Generate a score consistent with the rules:
+    /// For each *other* card in the hand, try replacing the jokers with that card
+    /// Then take as_number
+    /// And multiply that number by 10^(hand type)
+    fn joker_max(&self) -> usize {
+        use std::collections::HashSet;
+        let cards: HashSet<String> = self
+            .0
+            .chars()
+            // .filter(|&s| s != 'J')
+            .map(|c| c.to_string())
+            .collect();
+
+        cards
+            .iter()
+            .map(|c| Hand(self.0.replace('J', c)))
+            .map(HandType::from)
+            .map(|t| (t as usize) * 1_000_000_000_000 + Hand::as_number_2(&self.0))
+            .max()
+            .unwrap_or(0)
+    }
+
     fn as_number(this: &str) -> usize {
         if this.is_empty() {
             return 0;
@@ -86,6 +140,17 @@ impl Hand {
         for s in this.chars() {
             out *= 100;
             out += Hand::STRENGTHS.find(s).expect("illegal card");
+        }
+        out
+    }
+    fn as_number_2(this: &str) -> usize {
+        if this.is_empty() {
+            return 0;
+        }
+        let mut out: usize = 0;
+        for s in this.chars() {
+            out *= 100;
+            out += (Hand::STRENGTHS_2.find(s).expect("illegal card") + 1);
         }
         out
     }
@@ -126,7 +191,33 @@ fn part_1(infile: &str) -> Result<usize> {
     Ok(maybe)
 }
 fn part_2(infile: &str) -> Result<usize> {
-    todo!()
+    let mut input: Vec<(usize, Hand, usize)> = infile
+        .lines()
+        .filter_map(|s| s.split_once(' '))
+        .map(|(h, b)| (Hand(h.to_string()), b.parse().unwrap()))
+        .map(|(h, b)| (h.clone().joker_max(), h, b))
+        .collect();
+
+    input.sort_unstable();
+
+    let maybe: usize = input
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            println!("{}\t{}\t{}\t{}", i + 1, x.0, x.1 .0, x.2);
+            (i, x)
+        })
+        .map(|(i, (_, _, b))| (i + 1) * b)
+        .sum();
+
+    // 248465369 was too high
+    // 247687768 was too low
+    // 248583384 was too high
+    if [248465369, 247687768, 248583384].contains(&maybe) {
+        anyhow::bail!("known-bad value {maybe} in part 2")
+    }
+
+    Ok(maybe)
 }
 
 #[cfg(test)]
@@ -144,8 +235,8 @@ QQQJA 483";
         assert_eq!(part_1(EXAMPLE_1).unwrap(), 6440);
     }
 
-    // #[test]
+    #[test]
     fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1).unwrap(), todo!());
+        assert_eq!(part_2(EXAMPLE_1).unwrap(), 5905);
     }
 }
