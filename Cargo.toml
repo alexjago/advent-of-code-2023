@@ -19,3 +19,8 @@ members = ["day-*", "template"]
 [[bin]]
 name = "today"
 path = "day-06/src/main.rs"
+
+
+[profile.dev.package."*"]
+debug = false
+opt-level = 3
