@@ -14,7 +14,7 @@ printf -v newdayversion -- 's/^version =.*$/version = "0.%d.0"/' "$daynum"
 
 printf -v newtoday -- 's|^path = "day-.*$|path = "%s/src/main.rs"|' "$newday"
 
-sed -i '.bak' -e "$newdayversion" -e "$newtoday" Cargo.toml
+sed -i -e "$newdayversion" -e "$newtoday" Cargo.toml
 
-git add "Cargo.toml" "$daynum"
+git add "Cargo.toml" "$newday"
 git commit -am "day $daynum"
