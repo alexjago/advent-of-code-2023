@@ -8,9 +8,11 @@ printf -v newday -- 'day-%02d' "$daynum"
 
 cp -R template "$newday"
 
-sed -e "s/template/$newday/" -i 'bak' "$newday/Cargo.toml"
+sed -i -e "s/template/$newday/" "$newday/Cargo.toml"
 
-sed -e "s/^version = \"(\d+)\.\d+\.\d+\"$/version = i\"i\\1.$daynum.0\"" -i bak Cargo.toml
+printf -v newdayversion -- 's/^version =.*$/version = "0.%d.0"/' "$daynum"
 
-git add .
+sed -i -e "$newdayversion" Cargo.toml
+
+git add "Cargo.toml" "$daynum"
 git commit -am "day $daynum"
