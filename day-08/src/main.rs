@@ -2,12 +2,8 @@ use std::fs::read_to_string;
 
 use anyhow::Result;
 use clap::Parser;
-use core::iter::Repeat;
-use itertools::Itertools;
-use nom;
-use regex;
-use strum;
-use winnow;
+
+use num_integer::Integer;
 
 #[derive(Parser)]
 pub struct Opts {
@@ -48,8 +44,8 @@ fn parse_input(infile: &str) -> Option<(String, Graph)> {
 /// Basically a finite state machine with a step counter
 fn part_1(infile: &str) -> usize {
     let (dirs, graph) = parse_input(infile).unwrap();
-    println!("{dirs}");
-    println!("{graph:?}");
+    // println!("{dirs}");
+    // println!("{graph:?}");
 
     // We don't quite need a search algo
 
@@ -68,8 +64,47 @@ fn part_1(infile: &str) -> usize {
     }
     step_count
 }
+
+/// Basically a finite state machine with a step counter
 fn part_2(infile: &str) -> usize {
-    todo!()
+    let (dirs, graph) = parse_input(infile).unwrap();
+
+    let end_a_nodes: Vec<String> = graph
+        .keys()
+        .filter(|s| s.ends_with('A'))
+        .map(String::clone)
+        .collect();
+
+    // We don't quite need a search algo
+    // It might be heat death of the universe to simulate this directly
+    // Let's simulate each one separately and take the LCM
+
+    let mut step_counts: Vec<usize> = vec![];
+
+    for n in &end_a_nodes {
+        let mut step_count = 0;
+        let mut cur = n;
+        for dir in dirs.chars().cycle() {
+            if cur.ends_with('Z') {
+                break;
+            }
+            cur = match dir {
+                'L' => &graph.get(cur).unwrap().0,
+                'R' => &graph.get(cur).unwrap().1,
+                _ => unimplemented!(),
+            };
+            step_count += 1;
+        }
+        step_counts.push(step_count)
+    }
+    println!("{end_a_nodes:?}");
+    println!("step_counts:?");
+
+    step_counts
+        .into_iter()
+        // .filter_map(FromPrimitive::from_usize)
+        .reduce(|acc, e| acc.lcm(&e))
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -92,6 +127,17 @@ AAA = (BBB, BBB)
 BBB = (AAA, ZZZ)
 ZZZ = (ZZZ, ZZZ)";
 
+    const EXAMPLE_3: &str = r"LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)";
+
     #[test]
     fn part_1_example_1() {
         assert_eq!(part_1(EXAMPLE_1), 2);
@@ -103,6 +149,6 @@ ZZZ = (ZZZ, ZZZ)";
 
     #[test]
     fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1), todo!());
+        assert_eq!(part_2(EXAMPLE_3), 6);
     }
 }
