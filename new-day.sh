@@ -12,7 +12,9 @@ sed -i -e "s/template/$newday/" "$newday/Cargo.toml"
 
 printf -v newdayversion -- 's/^version =.*$/version = "0.%d.0"/' "$daynum"
 
-sed -i -e "$newdayversion" Cargo.toml
+printf -v newtoday -- 's|^path = "day-.*$|path = "%s/src/main.rs"|' "$newday"
+
+sed -i '.bak' -e "$newdayversion" -e "$newtoday" Cargo.toml
 
 git add "Cargo.toml" "$daynum"
 git commit -am "day $daynum"
