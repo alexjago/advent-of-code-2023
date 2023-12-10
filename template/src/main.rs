@@ -16,16 +16,16 @@ fn main() -> Result<()> {
 
     let infile = read_to_string(opts.infile)?;
 
-    println!("Part 1:\n{}", part_1(&infile)?);
-    println!("Part 2:\n{}", part_2(&infile)?);
+    println!("Part 1:\n{}", part_1(&infile));
+    println!("Part 2:\n{}", part_2(&infile));
 
     Ok(())
 }
 
-fn part_1(infile: &str) -> Result<usize> {
+fn part_1(infile: &str) -> usize {
     todo!()
 }
-fn part_2(infile: &str) -> Result<usize> {
+fn part_2(infile: &str) -> usize {
     todo!()
 }
 
@@ -38,11 +38,11 @@ mod test {
 
     #[test]
     fn part_1_example() {
-        assert_eq!(part_1(EXAMPLE_1).unwrap(), todo!());
+        assert_eq!(part_1(EXAMPLE_1), todo!());
     }
 
     #[test]
     fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1).unwrap(), todo!());
+        assert_eq!(part_2(EXAMPLE_1), todo!());
     }
 }
