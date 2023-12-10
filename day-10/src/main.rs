@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fs::read_to_string};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fs::read_to_string,
+};
 
 use anyhow::Result;
 use clap::Parser;
@@ -14,7 +17,7 @@ fn main() -> Result<()> {
     let infile = read_to_string(opts.infile)?;
 
     println!("Part 1:\n{}", part_1(&infile));
-    println!("Part 2:\n{}", part_2(&infile)?);
+    println!("Part 2:\n{}", part_2(&infile));
 
     Ok(())
 }
@@ -23,6 +26,17 @@ type Point = [isize; 2];
 
 fn add(a: Point, b: Point) -> Point {
     [a[0] + b[0], a[1] + b[1]]
+}
+
+fn sub(a: Point, b: Point) -> Point {
+    [a[0] - b[0], a[1] - b[1]]
+}
+
+fn mul(a: Point, n: isize) -> Point {
+    [a[0] * n, a[1] * n]
+}
+fn div(a: Point, n: isize) -> Point {
+    [a[0] / n, a[1] / n]
 }
 
 type Grid = std::collections::HashMap<Point, Vec<Point>>;
@@ -102,6 +116,76 @@ fn flood_fill(grid: &Grid, starting: Point) -> HashMap<Point, isize> {
     visited
 }
 
+fn neighbours(grid: &Grid, point: Point) -> impl Iterator<Item = (&Point, &Vec<Point>)> {
+    [[-1, 0], [1, 0], [0, -1], [0, 1]]
+        .iter()
+        .map(move |v| add(point, *v))
+        .filter_map(|v| grid.get_key_value(&v))
+}
+
+/// Run a BFS from the starting point
+fn scale_2x(grid: &Grid, starting: Point) -> (Point, Grid) {
+    let mut out = Grid::with_capacity(grid.len() * 4);
+
+    let mut queue = std::collections::VecDeque::new();
+    queue.push_back(starting);
+
+    while let Some(here) = queue.pop_front() {
+        let twobours: Vec<Point> = grid
+            .get(&here)
+            .unwrap()
+            .iter()
+            .map(|n| mul(*n, 2))
+            .collect();
+
+        for n in twobours {
+            if !out.contains_key(&n) {
+                queue.push_back(div(n, 2));
+            }
+            let tween = div(add(mul(here, 2), n), 2);
+
+            out.entry(mul(here, 2)).or_default().push(tween);
+            out.entry(n).or_default().push(tween);
+            out.insert(tween, vec![here, n]);
+        }
+    }
+
+    /*
+        for p in grid {
+            let newbours: Vec<Point> = p.1.iter().map(|[x, y]| [x * 2, y * 2]).collect();
+            let [xx, yy] = [p.0[0] * 2, p.0[1] * 2];
+            out.entry([xx, yy]).or_insert(newbours.clone());
+
+            for n in newbours
+                .iter()
+                .map(|n| add([xx, yy], *n))
+                .map(|[x, y]| [x / 2, y / 2])
+            {}
+        }
+    */
+    (mul(starting, 2), out)
+}
+
+fn show_me(grid: &Grid) {
+    let xmax = grid.keys().map(|v| v[0]).max().unwrap_or(0);
+    let ymax = grid.keys().map(|v| v[1]).max().unwrap_or(0);
+    let xmin = grid.keys().map(|v| v[0]).min().unwrap_or(0);
+    let ymin = grid.keys().map(|v| v[1]).min().unwrap_or(0);
+
+    println!("x in {xmin}..={xmax}; y in {ymin}..={ymax}\n");
+
+    for x in xmin..=xmax {
+        for y in ymin..=ymax {
+            if grid.contains_key(&[x, y]) {
+                print!("X");
+            } else {
+                print!(".");
+            }
+        }
+        println! {}
+    }
+}
+
 /// load grid
 /// identify starting position
 /// swap starting tile for actual tile
@@ -122,8 +206,90 @@ fn part_1(infile: &str) -> isize {
 
     *filled.values().max().unwrap_or(&0)
 }
-fn part_2(_infile: &str) -> Result<usize> {
-    todo!()
+
+/// Identify tiles enclosed by the loop
+/// We can have a zero-width squeeze between tiles
+/// just not crossing the loop
+/// the simplest solution here would be to move to 2x scale
+fn part_2(infile: &str) -> usize {
+    let (starting1, loop1) = load_grid(infile);
+    let (_, loop2) = scale_2x(&loop1, starting1);
+
+    // show_me(&loop1);
+
+    // show_me(&loop2);
+
+    let xmax = loop2.keys().map(|v| v[0]).max().unwrap_or(0);
+    let ymax = loop2.keys().map(|v| v[1]).max().unwrap_or(0);
+    let xmin = loop2.keys().map(|v| v[0]).min().unwrap_or(0);
+    let ymin = loop2.keys().map(|v| v[1]).min().unwrap_or(0);
+
+    let gridsize = xmax.abs_diff(xmin) * ymax.abs_diff(ymin);
+
+    // for each point on the edge, we run a DFS for all neighbours,
+    // filtering out ones we've already visited and those we know are in the loop
+
+    let mut queue: VecDeque<Point> = VecDeque::from_iter(
+        (xmin..=xmax)
+            .flat_map(|x| (ymin..=ymax).map(move |y| [x, y]))
+            .filter(|[x, y]| *x == xmin || *x == xmax || *y == ymin || *y == ymax)
+            .filter(|k| !loop2.contains_key(k)),
+    );
+
+    // println!("Starting with the following points: {queue:?}");
+
+    let mut outside: HashSet<Point> = HashSet::new();
+
+    for k in queue.iter() {
+        outside.insert(*k);
+    }
+
+    let mut counter = 0;
+
+    while let Some(point) = queue.pop_front() {
+        for x in -1..=1 {
+            for y in -1..=1 {
+                let cand = add(point, [x, y]);
+
+                if !(outside.contains(&cand)
+                    || loop2.contains_key(&cand)
+                    || cand[0] > xmax
+                    || cand[0] < xmin
+                    || cand[1] > ymax
+                    || cand[1] < ymin)
+                {
+                    queue.push_back(cand);
+                    outside.insert(cand);
+                }
+            }
+        }
+        counter += 1;
+        if counter > gridsize * 2 {
+            panic!("there's probably an infinite loop, we've been running for longer than we should've");
+        }
+        /*
+                for x in xmin..=xmax {
+                    for y in ymin..=ymax {
+                        if loop2.contains_key(&[x, y]) {
+                            print!("X");
+                        } else if queue.contains(&[x, y]) {
+                            print!("!");
+                        } else if outside.contains(&[x, y]) {
+                            print!("@");
+                        } else {
+                            print!(".")
+                        }
+                    }
+                    println!("");
+                }
+                println!("");
+        */
+    }
+    (xmin..=xmax)
+        .flat_map(|x| (ymin..=ymax).map(move |y| [x, y]))
+        .filter(|k| !loop2.contains_key(k) && !outside.contains(k))
+        .filter(|[x, y]| (x % 2 == 0) && (y % 2 == 0))
+        .count()
 }
 
 #[cfg(test)]
@@ -142,6 +308,26 @@ SJLL7
 |F--J
 LJ.LJ";
 
+    const EXAMPLE_2A: &str = r"...........
+.S-------7.
+.|F-----7|.
+.||.....||.
+.||.....||.
+.|L-7.F-J|.
+.|..|.|..|.
+.L--J.L--J.
+...........";
+
+    const EXAMPLE_2B: &str = r"..........
+.S------7.
+.|F----7|.
+.||....||.
+.||....||.
+.|L-7F-J|.
+.|..||..|.
+.L--JL--J.
+..........";
+
     #[test]
     fn part_1b() {
         assert_eq!(part_1(EXAMPLE_1B), 4);
@@ -153,6 +339,6 @@ LJ.LJ";
 
     #[test]
     fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1B).unwrap(), todo!());
+        assert_eq!(part_2(EXAMPLE_2B), 4);
     }
 }
