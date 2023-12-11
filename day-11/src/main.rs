@@ -1,14 +1,14 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashSet},
     fs::read_to_string,
-    ops::{Range, RangeInclusive},
+    ops::{RangeInclusive},
 };
 
 use anyhow::Result;
 use clap::Parser;
-use nom;
-use regex;
-use strum;
+
+
+
 
 #[derive(Parser)]
 pub struct Opts {
@@ -27,11 +27,20 @@ fn main() -> Result<()> {
 }
 
 fn part_1(infile: &str) -> usize {
-    let expando = expand_universe(infile);
+    let expando = expand_universe(infile, 2);
 
     // now for each pair of galaxies, we need the shortest path, and thence the sum thereof
+    path_pairs(expando)
+}
+fn part_2(infile: &str) -> usize {
+    let expando = expand_universe(infile, 1_000_000);
 
-    let mut listy: Vec<(usize, usize)> = expando.into_iter().collect();
+    path_pairs(expando)
+}
+
+/// for each pair of galaxies, we need the shortest path, and thence the sum thereof
+fn path_pairs(input: HashSet<(usize, usize)>) -> usize {
+    let mut listy: Vec<(usize, usize)> = input.into_iter().collect();
     listy.sort();
 
     let mut total = 0_usize;
@@ -45,9 +54,6 @@ fn part_1(infile: &str) -> usize {
         }
     }
     total
-}
-fn part_2(infile: &str) -> usize {
-    todo!()
 }
 
 fn bounds(input: &HashSet<(usize, usize)>) -> (RangeInclusive<usize>, RangeInclusive<usize>) {
@@ -70,7 +76,7 @@ fn visualise(input: &HashSet<(usize, usize)>) {
                 print!(".");
             }
         }
-        println!("");
+        println!();
     }
 }
 
@@ -88,7 +94,7 @@ fn load_universe(infile: &str) -> HashSet<(usize, usize)> {
         .collect()
 }
 
-fn expand_universe(infile: &str) -> HashSet<(usize, usize)> {
+fn expand_universe(infile: &str, factor: usize) -> HashSet<(usize, usize)> {
     let galaxy_orig = load_universe(infile);
     let (xs, ys) = bounds(&galaxy_orig);
     let (xmin, xmax) = (*xs.start(), *xs.end());
@@ -113,7 +119,7 @@ fn expand_universe(infile: &str) -> HashSet<(usize, usize)> {
             let yplus = &no_galaxy_row.iter().filter(|t| **t < y).count();
             // println!("Expanding ({x}, {y}) by ({xplus}, {yplus})");
 
-            out.insert((x + xplus, y + yplus));
+            out.insert((x + xplus * (factor - 1), y + yplus * (factor - 1)));
         }
     }
 
@@ -150,7 +156,7 @@ mod test {
 
     #[test]
     fn test_part_1_expando() {
-        let mut a = expand_universe(EXAMPLE_1)
+        let mut a = expand_universe(EXAMPLE_1, 2)
             .into_iter()
             .collect::<Vec<(usize, usize)>>();
         a.sort();
@@ -169,8 +175,11 @@ mod test {
         assert_eq!(part_1(EXAMPLE_1), 374);
     }
 
-    // #[test]
-    fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1), todo!());
+    #[test]
+    fn part_2_examples() {
+        let x10 = expand_universe(EXAMPLE_1, 10);
+        let x100 = expand_universe(EXAMPLE_1, 100);
+        assert_eq!(path_pairs(x10), 1030);
+        assert_eq!(path_pairs(x100), 8410);
     }
 }
