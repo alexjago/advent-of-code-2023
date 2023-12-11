@@ -28,12 +28,12 @@ BFS was actually a bit overkill here, since each tile in the loop has exactly tw
 
 Now I needed to find the area *enclosed* by the pipe-loop. This had a complication in that a zero-width gap between pipes counts for a connection to the outside! 
 
-  F----7
-  |F--7|
-  ||OO||
-  |L7FJ|
-  L-JL-J
-  OOOOOO
+    F----7
+    |F--7|
+    ||OO||
+    |L7FJ|
+    L-JL-J
+    OOOOOO
   
 In the above diagram, every `O` identifies an "outside" tile. Even the `OO` in the third row counts as outside, because if you could squeeze between the pipes south, you could get to the other `O`s at the southern edge. 
 
@@ -42,16 +42,16 @@ When I reviewed the subreddit the following day I saw that many people had imple
 
 I scaled up the map by 2x, inserting new lengths of pipe as needed:
 
-  F---------7
-  |.........|
-  |.F-----7.|
-  |.|.....|.|
-  |.|.O.O.|.|
-  |.|.....|.|
-  |.L-7.F-J.|
-  |...|.|...|
-  L---J.L---J
-  O.O.O.O.O.O
+    F---------7
+    |.........|
+    |.F-----7.|
+    |.|.....|.|
+    |.|.O.O.|.|
+    |.|.....|.|
+    |.L-7.F-J.|
+    |...|.|...|
+    L---J.L---J
+    O.O.O.O.O.O
 
 Each `O` above corresponds to one in the previous diagram and each `.` is a non-pipe tile. 
 
