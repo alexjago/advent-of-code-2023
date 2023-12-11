@@ -14,24 +14,24 @@ I represented an R/G/B quantity triple as a `Handful` and a colour as an enum, w
 Parsing is beautiful:
 
 
-  fn number(input: &str) -> IResult<&str, u32> {
-      map_res(digit1, str::parse)(input)
-  }
+    fn number(input: &str) -> IResult<&str, u32> {
+        map_res(digit1, str::parse)(input)
+    }
 
-  fn colour(input: &str) -> IResult<&str, Color> {
-      map_res(alt((tag("red"), tag("green"), tag("blue"))), |s: &str| {
-          Color::from_str(s)
-      })(input)
-  } 
-  fn parse_line(input: &str) -> (u32, Vec<Handful>) {
-      let game_tag = tag("Game ");
-      let game_tot = preceded(game_tag, number);
-      let dice = separated_pair(number, multispace1, colour);
-      let handful = map(separated_list1(tag(", "), dice), Handful::from);
-      let set_list = separated_list1(tag("; "), handful);
-      let mut full_line = separated_pair(game_tot, tag(": "), set_list);
-      full_line(input).finish().unwrap().1
-  }
+    fn colour(input: &str) -> IResult<&str, Color> {
+        map_res(alt((tag("red"), tag("green"), tag("blue"))), |s: &str| {
+            Color::from_str(s)
+        })(input)
+    } 
+    fn parse_line(input: &str) -> (u32, Vec<Handful>) {
+        let game_tag = tag("Game ");
+        let game_tot = preceded(game_tag, number);
+        let dice = separated_pair(number, multispace1, colour);
+        let handful = map(separated_list1(tag(", "), dice), Handful::from);
+        let set_list = separated_list1(tag("; "), handful);
+        let mut full_line = separated_pair(game_tot, tag(": "), set_list);
+        full_line(input).finish().unwrap().1
+    }
 
 ## Part 1
 
