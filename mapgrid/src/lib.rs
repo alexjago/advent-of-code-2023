@@ -1,18 +1,20 @@
-extern crate derive_more;
-use derive_more::{Add, Sub, Display, From, Into}
+use std::cmp::{Eq, Ord, PartialEq, PartialOrd};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    ops::Add,
+    ops::{Add, RangeInclusive},
 };
-use std::cmp::{PartialOrd, PartialEq, Ord, Eq};
 
 // #[derive(From, Into, PartialOrd, PartialEq, Ord, Eq)]
 pub type Coord = [isize; 2];
 
 pub trait Grid<V> {
     fn from_str_with<F: Fn(char) -> Option<V>>(input: &str, f: F) -> Self;
-}
 
+    fn bounds(&self) -> [RangeInclusive<isize>; 2];
+
+    fn visualise(&self) -> String;
+}
+/*
 impl<V> Grid<V> for BTreeMap<Coord, V> {
     fn from_str_with<F: Fn(char) -> Option<V>>(input: &str, f: F) -> BTreeMap<Coord, V> {
         let mut out = BTreeMap::new();
@@ -58,6 +60,7 @@ impl<V> Grid<V> for HashMap<Coord, V> {
         out
     }
 }
+*/
 
 impl<V> Grid<V> for HashSet<Coord> {
     /// Note: the value of V is disregarded
@@ -73,10 +76,34 @@ impl<V> Grid<V> for HashSet<Coord> {
         }
         out
     }
+    fn bounds(&self) -> [RangeInclusive<isize>; 2] {
+        let xmax = self.iter().map(|v| v[0]).max().unwrap_or(0);
+        let ymax = self.iter().map(|v| v[1]).max().unwrap_or(0);
+        let xmin = self.iter().map(|v| v[0]).min().unwrap_or(0);
+        let ymin = self.iter().map(|v| v[1]).min().unwrap_or(0);
+
+        [xmin..=xmax, ymin..=ymax]
+    }
+
+    fn visualise(&self) -> String {
+        let mut out = String::new();
+        let [xs, ys] = <HashSet<[isize; 2]> as Grid<V>>::bounds(self);
+
+        for y in ys {
+            for x in xs.clone() {
+                if self.contains(&[x, y]) {
+                    out.push('#');
+                } else {
+                    out.push('.');
+                }
+            }
+            out.push('\n');
+        }
+        out
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
 }
