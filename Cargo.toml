@@ -13,9 +13,10 @@ petgraph="0.6"
 clap = { version = "4", features = ["derive"] }
 itertools = "0.12.0"
 strum = "0.25.0"
+derive_more = "0.99.17"
 
 [workspace]
-members = ["day-*", "template"]
+members = ["day-*", "template", "mapgrid"]
 
 
 [[bin]]

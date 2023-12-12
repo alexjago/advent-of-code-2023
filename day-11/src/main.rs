@@ -1,14 +1,7 @@
-use std::{
-    collections::{HashSet},
-    fs::read_to_string,
-    ops::{RangeInclusive},
-};
+use std::{collections::HashSet, fs::read_to_string, ops::RangeInclusive};
 
 use anyhow::Result;
 use clap::Parser;
-
-
-
 
 #[derive(Parser)]
 pub struct Opts {
@@ -113,14 +106,11 @@ fn expand_universe(infile: &str, factor: usize) -> HashSet<(usize, usize)> {
     // if a galaxy's position in a coordinate is strictly greater than the coordinates of N rows/columns then its new position is +N
 
     let mut out = HashSet::new();
-    for (x, y) in (0..=xmax).flat_map(move |x| (0..=ymax).map(move |y| (x, y))) {
-        if galaxy_orig.contains(&(x, y)) {
-            let xplus = &no_galaxy_col.iter().filter(|t| **t < x).count();
-            let yplus = &no_galaxy_row.iter().filter(|t| **t < y).count();
-            // println!("Expanding ({x}, {y}) by ({xplus}, {yplus})");
-
-            out.insert((x + xplus * (factor - 1), y + yplus * (factor - 1)));
-        }
+    for (x, y) in galaxy_orig {
+        let xplus = &no_galaxy_col.iter().filter(|t| **t < x).count();
+        let yplus = &no_galaxy_row.iter().filter(|t| **t < y).count();
+        // println!("Expanding ({x}, {y}) by ({xplus}, {yplus})");
+        out.insert((x + xplus * (factor - 1), y + yplus * (factor - 1)));
     }
 
     out
