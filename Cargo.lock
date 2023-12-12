@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "advent-of-code-2023"
-version = "0.11.2"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -14,6 +14,7 @@ dependencies = [
  "petgraph",
  "regex",
  "strum",
+ "winnow",
 ]
 
 [[package]]
@@ -269,6 +270,18 @@ dependencies = [
  "nom",
  "regex",
  "strum",
+]
+
+[[package]]
+name = "day-12"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "nom",
+ "regex",
+ "strum",
+ "winnow",
 ]
 
 [[package]]
@@ -654,3 +667,12 @@ name = "windows_x86_64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
+
+[[package]]
+name = "winnow"
+version = "0.5.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c830786f7720c2fd27a1a0e27a709dbd3c4d009b56d098fc742d4f4eab91fe2"
+dependencies = [
+ "memchr",
+]
