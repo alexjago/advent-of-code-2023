@@ -23,7 +23,35 @@ fn main() -> Result<()> {
 }
 
 fn part_1(infile: &str) -> usize {
-    todo!()
+    // functionally equivalent to segmenting within each column
+    // then summing (row, row-1, ...) for as many O as within that segment
+    let rows: Vec<Vec<char>> = infile
+        .lines()
+        .filter(|s| !s.is_empty())
+        .map(|l| l.chars().collect())
+        .collect();
+
+    let width = rows.iter().map(|r| r.len()).min().unwrap_or(0);
+    let height = rows.len();
+
+    let mut total = 0;
+
+    for c in 0..width {
+        let mut score = height;
+        for r in 0..height {
+            match rows[r][c] {
+                '#' => score = (height - r).saturating_sub(1),
+                'O' => {
+                    total += score;
+                    score -= 1;
+                }
+                _ => {}
+            }
+            // print!("{} ({r}, {c}): {total}\t", rows[r][c]);
+        }
+        // println!("");
+    }
+    total
 }
 fn part_2(infile: &str) -> usize {
     todo!()
@@ -33,12 +61,21 @@ fn part_2(infile: &str) -> usize {
 mod test {
     use super::*;
 
-    const EXAMPLE_1: &str = r"
-";
+    /// O can roll in any of the four cardinal directions, # are fixed, . are empty
+    const EXAMPLE_1: &str = r"O....#....
+O.OO#....#
+.....##...
+OO.#O....O
+.O.....O#.
+O.#..O.#.#
+..O..#O..O
+.......O..
+#....###..
+#OO..#....";
 
     #[test]
     fn part_1_example() {
-        assert_eq!(part_1(EXAMPLE_1), todo!());
+        assert_eq!(part_1(EXAMPLE_1), 136);
     }
 
     #[test]
