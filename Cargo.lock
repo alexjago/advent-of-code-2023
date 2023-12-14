@@ -4,12 +4,13 @@ version = 3
 
 [[package]]
 name = "advent-of-code-2023"
-version = "0.12.2"
+version = "0.13.1"
 dependencies = [
  "anyhow",
  "clap",
  "derive_more",
  "itertools",
+ "mapgrid",
  "nom",
  "num",
  "petgraph",
@@ -310,6 +311,18 @@ dependencies = [
  "regex",
  "strum",
  "winnow",
+]
+
+[[package]]
+name = "day-13"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "mapgrid",
+ "nom",
+ "regex",
+ "strum",
 ]
 
 [[package]]

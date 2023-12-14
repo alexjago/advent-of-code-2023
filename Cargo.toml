@@ -1,6 +1,6 @@
 [package]
 name = "advent-of-code-2023"
-version = "0.13.0"
+version = "0.13.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,6 +16,7 @@ strum = "0.25.0"
 derive_more = "0.99.17"
 winnow = "0.5.28"
 num = { version = "0.4.1", features = ["num-bigint"] }
+mapgrid = { version = "0.1.0", path = "mapgrid" }
 
 [workspace]
 members = ["day-*", "template", "mapgrid"]
