@@ -5,10 +5,10 @@ use std::{
 
 use anyhow::Result;
 use clap::Parser;
-use itertools::join;
-use nom;
-use regex;
-use std::str::FromStr;
+
+
+
+
 use strum::{self, Display, EnumString};
 
 #[derive(Parser)]
@@ -27,15 +27,18 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Do some ray tracing!
-/// Note: if the beam *starts* on a block which would change its direction, its direction should be changed.
-/// (A previous implementation didn't do this...)
 fn part_1(infile: &str) -> usize {
     let grid: Vec<Vec<Tile>> = infile
         .lines()
         .map(|s| s.chars().map(|c| Tile::try_from(c).unwrap()).collect())
         .collect();
+    raytrace(&grid, [0, 0], [0, 1])
+}
 
+/// Do some ray tracing!
+/// Note: if the beam *starts* on a block which would change its direction, its direction should be changed.
+/// (A previous implementation didn't do this...)
+fn raytrace(grid: &Vec<Vec<Tile>>, start_pos: Coord, start_dir: Coord) -> usize {
     let rmin = 0_isize;
     let rmax = grid.iter().map(|s| s.len()).max().unwrap_or_default() as isize;
     let cmin = 0_isize;
@@ -47,7 +50,7 @@ fn part_1(infile: &str) -> usize {
     let mut done: HashSet<(Coord, Coord)> = HashSet::new();
     let mut queue: VecDeque<(Coord, Coord)> = VecDeque::new();
 
-    queue.push_back(([0, 0], [0, 1]));
+    queue.push_back((start_pos, start_dir));
 
     while let Some((pos, dir)) = queue.pop_front() {
         if done.contains(&(pos, dir)) || dir == [0, 0] {
@@ -146,8 +149,35 @@ impl TryFrom<char> for Tile {
     }
 }
 
+/// Just Brute Force It
+/// (even in debug mode it only takes like 12 seconds)
 fn part_2(infile: &str) -> usize {
-    todo!()
+    let grid: Vec<Vec<Tile>> = infile
+        .lines()
+        .map(|s| s.chars().map(|c| Tile::try_from(c).unwrap()).collect())
+        .collect();
+
+    let rmax = grid.iter().map(|s| s.len()).max().unwrap_or_default() as isize;
+    let cmax = grid.len() as isize;
+
+    let left = (0..rmax)
+        .map(|r| raytrace(&grid, [r, 0], [0, 1]))
+        .max()
+        .unwrap_or_default();
+    let right = (0..rmax)
+        .map(|r| raytrace(&grid, [r, rmax - 1], [0, -1]))
+        .max()
+        .unwrap_or_default();
+    let down = (0..cmax)
+        .map(|c| raytrace(&grid, [0, c], [1, 0]))
+        .max()
+        .unwrap_or_default();
+    let up = (0..cmax)
+        .map(|c| raytrace(&grid, [cmax - 1, c], [-1, 0]))
+        .max()
+        .unwrap_or_default();
+
+    left.max(right).max(down).max(up)
 }
 
 #[cfg(test)]
@@ -172,7 +202,7 @@ mod test {
 
     #[test]
     fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1), todo!());
+        assert_eq!(part_2(EXAMPLE_1), 51);
     }
 }
 
