@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "advent-of-code-2023"
-version = "0.15.2"
+version = "0.16.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -342,6 +342,18 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
+ "nom",
+ "regex",
+ "strum",
+]
+
+[[package]]
+name = "day-16"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "itertools",
  "nom",
  "regex",
  "strum",
