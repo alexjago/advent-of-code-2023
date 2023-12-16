@@ -5,9 +5,7 @@ use std::{
 
 use anyhow::Result;
 use clap::Parser;
-
-
-
+use rayon::prelude::*;
 
 use strum::{self, Display, EnumString};
 
@@ -48,11 +46,12 @@ fn raytrace(grid: &Vec<Vec<Tile>>, start_pos: Coord, start_dir: Coord) -> usize 
 
     // (Position, Direction)
     let mut done: HashSet<(Coord, Coord)> = HashSet::new();
-    let mut queue: VecDeque<(Coord, Coord)> = VecDeque::new();
+    let mut stack: Vec<(Coord, Coord)> = Vec::new();
 
-    queue.push_back((start_pos, start_dir));
+    // This was a VecDeque queue, but a stack works just as well as a queue here, and is slightly faster
+    stack.push((start_pos, start_dir));
 
-    while let Some((pos, dir)) = queue.pop_front() {
+    while let Some((pos, dir)) = stack.pop() {
         if done.contains(&(pos, dir)) || dir == [0, 0] {
             continue;
         }
@@ -63,30 +62,30 @@ fn raytrace(grid: &Vec<Vec<Tile>>, start_pos: Coord, start_dir: Coord) -> usize 
         let next = add(pos, dir);
 
         match grid[pos[0] as usize][pos[1] as usize] {
-            Tile::Empty => queue.push_back((next, dir)),
+            Tile::Empty => stack.push((next, dir)),
             Tile::MirrorF => {
                 let newdir = [-dir[1], -dir[0]];
                 // println!("{next:?}, {newdir:?}");
-                queue.push_back((add(pos, newdir), newdir));
+                stack.push((add(pos, newdir), newdir));
             }
             Tile::MirrorB => {
                 let newdir = [dir[1], dir[0]];
                 // println!("{next:?}, {newdir:?}");
-                queue.push_back((add(pos, newdir), newdir));
+                stack.push((add(pos, newdir), newdir));
             }
             Tile::SplitterV => match dir {
-                [_, 0] => queue.push_back((next, dir)),
+                [_, 0] => stack.push((next, dir)),
                 [0, _] => {
-                    queue.push_back((add(pos, [-1, 0]), [-1, 0]));
-                    queue.push_back((add(pos, [1, 0]), [1, 0]));
+                    stack.push((add(pos, [-1, 0]), [-1, 0]));
+                    stack.push((add(pos, [1, 0]), [1, 0]));
                 }
                 _ => unimplemented!(),
             },
             Tile::SplitterH => match dir {
-                [0, _] => queue.push_back((next, dir)),
+                [0, _] => stack.push((next, dir)),
                 [_, 0] => {
-                    queue.push_back((add(pos, [0, -1]), [0, -1]));
-                    queue.push_back((add(pos, [0, 1]), [0, 1]));
+                    stack.push((add(pos, [0, -1]), [0, -1]));
+                    stack.push((add(pos, [0, 1]), [0, 1]));
                 }
                 _ => unimplemented!(),
             },
@@ -99,11 +98,11 @@ fn raytrace(grid: &Vec<Vec<Tile>>, start_pos: Coord, start_dir: Coord) -> usize 
         // }
     }
 
-    let mut done_vis = vec![vec!['.'; grid[0].len()]; grid.len()];
+    // let mut done_vis = vec![vec!['.'; grid[0].len()]; grid.len()];
 
-    for (pos, _dir) in done.iter() {
-        done_vis[pos[0] as usize][pos[1] as usize] = '#'
-    }
+    // for (pos, _dir) in done.iter() {
+    //     done_vis[pos[0] as usize][pos[1] as usize] = '#'
+    // }
 
     // for (row, orig) in done_vis.iter().zip(infile.lines()) {
     //     print!("{}", join(row, ""));
@@ -159,20 +158,25 @@ fn part_2(infile: &str) -> usize {
 
     let rmax = grid.iter().map(|s| s.len()).max().unwrap_or_default() as isize;
     let cmax = grid.len() as isize;
+    // println!("Trying {} starts...", (rmax + cmax) * 2);
 
     let left = (0..rmax)
+        .into_par_iter()
         .map(|r| raytrace(&grid, [r, 0], [0, 1]))
         .max()
         .unwrap_or_default();
     let right = (0..rmax)
+        .into_par_iter()
         .map(|r| raytrace(&grid, [r, rmax - 1], [0, -1]))
         .max()
         .unwrap_or_default();
     let down = (0..cmax)
+        .into_par_iter()
         .map(|c| raytrace(&grid, [0, c], [1, 0]))
         .max()
         .unwrap_or_default();
     let up = (0..cmax)
+        .into_par_iter()
         .map(|c| raytrace(&grid, [cmax - 1, c], [-1, 0]))
         .max()
         .unwrap_or_default();
@@ -208,6 +212,14 @@ mod test {
 
 /*
 - First attempt at actual for 1 got 8406, which is too high
-- Maybe starting on a / means
+- Maybe starting on a / means itchanges direction straight away?
+- Yep. (This lead to a substantial revision of part 1 code).
 
+Part 2 is a simple factoring-out and generalisation of part 1 (into `raytrace`)
+then brute forcing that for all the possible start positions.
+There's only about 440 on the real input.
+
+This took 12 seconds in debug mode on my machine, and about 0.3s in release with rayon
+
+(But much  more than 12s to put rayon in and compile in release mode!)
 */

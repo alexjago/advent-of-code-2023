@@ -17,6 +17,7 @@ derive_more = "0.99.17"
 winnow = "0.5.28"
 num = { version = "0.4.1", features = ["num-bigint"] }
 mapgrid = { version = "0.1.0", path = "mapgrid" }
+rayon = "1.8.0"
 
 [workspace]
 members = ["day-*", "template", "mapgrid"]
