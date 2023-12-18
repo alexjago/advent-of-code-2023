@@ -1,15 +1,12 @@
 use std::{
     cmp::Ordering,
-    collections::{BinaryHeap, HashMap, VecDeque},
+    collections::{BinaryHeap, HashMap},
     fs::read_to_string,
 };
 
 use anyhow::Result;
 use clap::Parser;
 use itertools::Itertools;
-use nom;
-use regex;
-use strum;
 
 #[derive(Parser)]
 pub struct Opts {
@@ -170,9 +167,8 @@ fn part_1(infile: &str) -> usize {
                 if p[0] < rmax
                     && p[1] < cmax
                     && point.run < 4
-                    && (point.dir != d || (point.dir == d && point.run < 3))
                     && (d != point.dir.opp())
-                    && (point.run > 0 || point.run == 0 && point.dir == d)
+                    && (point.run > 0 || point.dir == d)
                     && p != [point.row, point.col]
                 {
                     // n is our neighbouring point
@@ -220,7 +216,111 @@ fn part_1(infile: &str) -> usize {
 }
 
 fn part_2(infile: &str) -> usize {
-    todo!()
+    use crate::Direction::*;
+    let grid: Vec<Vec<u32>> = infile
+        .lines()
+        .map(|s| s.chars().map(|c| c.to_digit(10).unwrap()).collect())
+        // .map(|v| {
+        //     println!("{v:?}");
+        //     v
+        // })
+        .collect();
+
+    let cmax = grid[0].len();
+    let rmax = grid.len();
+
+    // row, column, number of steps : heat loss in path
+    // to know how many steps we've taken also depends on which direction we're going
+    // this takes some more thought
+
+    // ALSO, this is basically shortest-path, and has the same issue
+    // of needing to consider shortest-tentative-cost first.
+    let mut done: HashMap<Point, u32> = HashMap::new();
+
+    let mut queue: BinaryHeap<State> = BinaryHeap::new();
+
+    // The path is symmetrical so it doesn't matter which direction we build in
+    // We don't need to count the cost of the starting block, but it might be easier to just subtract that off
+    // When you turn, you have travelled 0 blocks in your new direction (see example trace RH edge)
+
+    // for k in 1..=3 {
+    for d in [North, West, East, South] {
+        let p = Point {
+            row: 0,
+            col: 0,
+            run: 0,
+            dir: d,
+        };
+        done.insert(p, grid[p.row][p.col]);
+        queue.push(State {
+            cost: grid[p.row][p.col],
+            point: p,
+        });
+    }
+    // }
+
+    // standard dynamic programming from here?
+
+    while let Some(cur) = queue.pop() {
+        // we need to try each neighbour - we might be cheaper for them
+        let point = cur.point;
+
+        for d in [North, South, East, West] {
+            if let Some(p) = step(point.row, point.col, d) {
+                // - OOB in Row/Col => skip
+                // - directional reversal => skip
+                // - run == 0 => force same-direction (initial condition)
+                // Ultra Crucibles *must* run at least 4 in the same direction
+                // but have a limit of 10 before turning
+                if p[0] < rmax
+                    && p[1] < cmax
+                    && (d != point.dir.opp())
+                    && (point.run >= 4 || point.dir == d)
+                    && p != [point.row, point.col]
+                    && point.run <= 10
+                {
+                    // n is our neighbouring point
+                    let n = Point {
+                        row: p[0],
+                        col: p[1],
+                        run: if point.dir == d { point.run + 1 } else { 1 },
+                        dir: d,
+                    };
+
+                    // simple adjacency
+                    let maybe_cost = grid[p[0]][p[1]] + cur.cost;
+                    let existing_cost = *done.get(&n).unwrap_or(&u32::MAX);
+
+                    if maybe_cost < existing_cost {
+                        done.insert(n, maybe_cost);
+
+                        queue.push(State {
+                            point: n,
+                            cost: maybe_cost,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // println!("{done:#?}");
+    [North, South, East, West]
+        .into_iter()
+        .cartesian_product(4..=10_usize)
+        .filter_map(|(d, r)| {
+            let p = done.get(&Point {
+                row: rmax - 1,
+                col: cmax - 1,
+                run: r,
+                dir: d,
+            });
+            // println!("(run: {r} dir: {d:?}) -> {p:?}");
+            p
+        })
+        .min()
+        .map(|&x| x - grid[0][0])
+        .unwrap() as usize
 }
 
 #[cfg(test)]
@@ -259,8 +359,18 @@ mod test {
         assert_eq!(part_1(SIMPLE), 14);
     }
 
-    // #[test]
-    fn part_2_example() {
-        assert_eq!(part_2(EXAMPLE_1), todo!());
+    #[test]
+    fn part_2_example_1() {
+        assert_eq!(part_2(EXAMPLE_1), 94);
+    }
+    const EXAMPLE_2: &str = r"111111111111
+999999999991
+999999999991
+999999999991
+999999999991";
+
+    #[test]
+    fn part_2_example_2() {
+        assert_eq!(part_2(EXAMPLE_2), 71);
     }
 }
